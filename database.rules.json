@@ -1,21 +1,37 @@
 
 {
   "rules": {
+    ".read": false,
+    ".write": false,
+
     "players": {
       ".read": "auth != null",
       "$uid": {
-        ".write": "auth != null && auth.uid === $uid"
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['n','x','z']) && newData.child('n').isString() && newData.child('n').val().length <= 24 && newData.child('x').isNumber() && newData.child('z').isNumber()"
       }
     },
+
+    "profiles": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['n','id']) && newData.child('n').isString() && newData.child('n').val().length <= 24 && newData.child('id').isString() && newData.child('id').val().length <= 16"
+      }
+    },
+
     "chat": {
       ".read": "auth != null",
-      "$messageId": {
-        ".write": "auth != null && newData.child('u').val() === auth.uid"
-      }
-    },
-    "profiles": {
-      "$uid": {
-        ".write": "auth != null && auth.uid === $uid"
+      ".indexOn": ["t"],
+      "$k": {
+        ".write": "auth != null && !data.exists() && newData.child('u').val() === auth.uid",
+        ".validate": "newData.hasChildren(['u','n','m','t']) && newData.child('u').isString() && newData.child('n').isString() && newData.child('m').isString() && newData.child('m').val().length >= 1 && newData.child('m').val().length <= 140 && newData.child('t').isNumber()",
+        "r": {
+          ".validate": "newData.hasChildren(['m']) && newData.child('m').isString() && newData.child('m').val().length <= 60"
+        },
+        "$other": {
+          ".validate": false
+        }
       }
     }
   }
