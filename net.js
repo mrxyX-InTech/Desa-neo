@@ -67,11 +67,27 @@ class FirebaseTransport{
     const born=Date.now();D.onChildAdded(q,s=>{const m=s.val();cb.chat(s.key,m,!m||!m.t||m.t<born-2000)},bad('Baca chat'));
     return this.uid;
   }
-  _w(step,p){return p.then(()=>{if(!this['ok'+step]){this['ok'+step]=1;this.cb.diag(step,true)}}).catch(e=>this.cb.diag(step,false,explainErr(e)))}
-  setPresence(d){this._w('Tulis posisi',this.D.set(this.meRef,d))}
-  pushChat(m){const D=this.D,k=D.push(D.ref(this.db,'chat')).key;m.t=D.serverTimestamp();this._w('Kirim chat',D.set(D.ref(this.db,'chat/'+k),m))}
-  saveProfile(p){this._w('Simpan profil',this.D.set(this.D.ref(this.db,'profiles/'+this.uid),p))}
-  close(){try{this.D.remove(this.meRef)}catch(e){}}
+
+   _w(step,p){
+  return p.then(()=>{
+    if(!this['ok'+step]){
+      this['ok'+step]=1;
+      this.cb.diag(step,true);
+    }
+  }).catch(e=>{
+    console.error('[KOTANEO '+step+']', {
+      code: e.code,
+      message: e.message,
+      error: e
+    });
+
+    this.cb.diag(
+      step,
+      false,
+      (e.code || 'UNKNOWN') + ': ' +
+      (e.message || explainErr(e))
+    );
+  });
 }
 
 const Net={
