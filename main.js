@@ -58,7 +58,7 @@ const Game={
     placePlayer(pos.x,pos.z,pos.yaw);collide(P);
     Cam.intro=false;Cam.setMode('walk');Cam.yaw=P.yaw+Math.PI;Cam._init=false;UI.setCamBtn(false);
     Input.enabled=true;Input.reset();this.state='play';UI.hud(true);Quest.refresh();
-    Net.start(p).then(()=>{if(!Net.ready)UI.toast('Multiplayer belum tersambung — main sendirian dulu',3500)});
+    Net.start(p).then(()=>{if(Net.mode==='off')UI.toast('Multiplayer belum tersambung. Buka Menu → Cek Multiplayer',6000);else if(Net.mode==='local')UI.toast('Mode uji lokal: config.js belum terbaca',5000)});
     const touch=matchMedia('(pointer:coarse)').matches;
     UI.hint(touch?'Geser kiri layar untuk berjalan · geser kanan untuk memutar kamera':'WASD / panah jalan · Shift lari · Spasi lompat · E aksi · C kamera atas · seret mouse untuk memutar',7000);
     if(first){const h=World.own;UI.card('Rumahmu sudah siap!',`<p>Kamu mendapat rumah <b>${esc(h.cname)} No. ${h.n}</b> (kode ${esc(h.id)}).</p><p>Satu rumah boleh dihuni banyak warga, jadi tenang saja kalau tetangga serumah banyak nanti.</p><div class="stack"><button class="btn big" id="go1">MULAI JELAJAH</button></div>`);
