@@ -1,0 +1,34 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "players": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['n','x','z']) && newData.child('n').isString() && newData.child('n').val().length <= 24 && newData.child('x').isNumber() && newData.child('z').isNumber()"
+      }
+    },
+    "profiles": {
+      ".read": true,
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['n','id']) && newData.child('n').isString() && newData.child('n').val().length <= 24 && newData.child('id').isString() && newData.child('id').val().length <= 16"
+      }
+    },
+    "chat": {
+      ".read": "auth != null",
+      ".indexOn": ["t"],
+      "$k": {
+        ".write": "auth != null && !data.exists() && newData.child('u').val() === auth.uid",
+        ".validate": "newData.hasChildren(['u','n','m','t'])",
+        "u": { ".validate": "newData.isString()" },
+        "n": { ".validate": "newData.isString() && newData.val().length <= 24" },
+        "m": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 140" },
+        "t": { ".validate": "newData.val() === now" },
+        "r": { ".validate": "newData.child('m').isString() && newData.child('m').val().length <= 60" },
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}
