@@ -1,0 +1,19 @@
+{
+  "updated": "2026-11-17",
+  "proyek": {
+    "nama": "Sekolah Neo",
+    "sub": "SD · SMP · SMA satu atap",
+    "targetJuta": 2000,
+    "terkumpulJuta": 0,
+    "perShareJuta": 2,
+    "tahap": "Penggalangan dana",
+    "rincian": [
+      { "item": "Bangunan 277 m² (3 kelas, ruang guru, kantin, toilet)", "juta": 1662 },
+      { "item": "Biaya penunjang 5%", "juta": 83 },
+      { "item": "Meja, kursi, papan tulis, perlengkapan", "juta": 150 },
+      { "item": "Pagar, paving, lampu, tiang bendera", "juta": 105 }
+    ]
+  },
+  "berikutnya": ["Taman Bermain", "Bioskop Neo", "Pasar Malam", "Taman Hiburan", "Mall Neo"],
+  "catatan": "Dana pembangunan hanya angka di dalam game, bukan donasi uang sungguhan. Hanya SHARE video yang dihitung; like dan follow tidak."
+}
