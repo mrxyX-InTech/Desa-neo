@@ -36,6 +36,7 @@ class LocalTransport{
     return Promise.resolve(this.uid);
   }
   setPresence(d){this.last=d;this.bc.postMessage({t:'pres',u:this.uid,d})}
+   
   pushChat(m){
   const D=this.D;
   const ref=D.push(D.ref(this.db,'chat'));
