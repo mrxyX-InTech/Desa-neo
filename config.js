@@ -1,13 +1,17 @@
 'use strict';
 
-(() => {
-  const encoded = 'eyJhcGlLZXkiOiJBSXphU3lCRHhXazFKXzY2dThzNGp3UW50clg0Vk9iZDB5Y2ZPYzAiLCJhdXRoRG9tYWluIjoia290YW5lby5maXJlYmFzZWFwcC5jb20iLCJkYXRhYmFzZVVSTCI6Imh0dHBzOi8va290YW5lby1kZWZhdWx0LXJ0ZGIuZmlyZWJhc2Vpby5jb20iLCJwcm9qZWN0SWQiOiJrb3RhbmVvIiwic3RvcmFnZUJ1Y2tldCI6ImtvdGFuZW8uZmlyZWJhc2VzdG9yYWdlLmFwcCIsIm1lc3NhZ2luZ1NlbmRlcklkIjoiNjk2MzMyMjE1NzU4IiwiYXBwSWQiOiIxOjY5NjMzMjIxNTc4OndlYjo3NmYwYWExYjU1ZGY5NGIzYjU3NzlmIiwibWVhc3VyZW1lbnRJZCI6IkctTVpQMk1aQkVENyJ9';
+const decode = value => atob(value);
 
-  const config = JSON.parse(atob(encoded));
+globalThis.FIREBASE_CONFIG = {
+  apiKey: decode("QUl6YVN5QkR4V2sxSl82NnU4czRqd1FudHJYNFZPYmQweWNmT2Mw"),
+  authDomain: decode("a290YW5lby5maXJlYmFzZWFwcC5jb20="),
+  databaseURL: decode("aHR0cHM6Ly9rb3RhbmVvLWRlZmF1bHQtcnRkYi5maXJlYmFzZWlvLmNvbQ=="),
+  projectId: decode("a290YW5lbw=="),
+  storageBucket: decode("a290YW5lby5maXJlYmFzZXN0b3JhZ2UuYXBw"),
+  messagingSenderId: decode("Njk2MzMyMjE1NzU4"),
+  appId: decode("MTo2OTYzMzIyMTU3NTg6d2ViOjc2ZjBhYTFiNTVkZjk0YjNiNTc3OWY="),
+  measurementId: decode("Ry1NWlAyTVpCRUQ3")
+};
 
-  globalThis.firebaseConfig = config;
-  globalThis.FIREBASE_CONFIG = config;
-  globalThis.DATA_BASE = 'data/';
-
-  console.log('[Kotaneo] Config loaded:', !!globalThis.FIREBASE_CONFIG.databaseURL);
-})();
+globalThis.firebaseConfig = globalThis.FIREBASE_CONFIG;
+globalThis.DATA_BASE = 'data/';
