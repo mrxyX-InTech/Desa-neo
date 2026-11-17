@@ -1,8 +1,27 @@
 'use strict';
 /* net.js — multiplayer & chat.
-   Transport: FirebaseTransport (Realtime Database + login anonim) bila config.js terisi,
-   selain itu LocalTransport (BroadcastChannel antar tab) untuk uji coba tanpa server. */
+   Transport: FirebaseTransport (Realtime Database + login anonim) bila config terisi,
+   selain itu LocalTransport (BroadcastChannel antar tab) untuk uji coba. Setiap langkah dicatat di Net.diag
+   (lihat Menu → Cek Multiplayer) supaya penyebab kegagalan terlihat jelas. */
 const angD=(a,b)=>{let e=a-b;while(e>Math.PI)e-=2*Math.PI;while(e<-Math.PI)e+=2*Math.PI;return e};
+
+/* baca config dari mana pun: globalThis.FIREBASE_CONFIG, globalThis.firebaseConfig, atau const lama */
+function netConfig(){
+  let c=globalThis.FIREBASE_CONFIG||globalThis.firebaseConfig;
+  if(!c&&typeof FIREBASE_CONFIG!=='undefined')c=FIREBASE_CONFIG;
+  return c||{};
+}
+function explainErr(e){
+  const s=(String((e&&(e.code||e.name))||'')+' '+String((e&&e.message)||e||'')).toLowerCase();
+  if(s.includes('operation-not-allowed')||s.includes('admin-restricted'))return 'Login Anonymous belum aktif. Firebase Console → Authentication → Sign-in method → Anonymous → Enable.';
+  if(s.includes('configuration-not-found'))return 'Authentication belum dimulai. Firebase Console → Authentication → klik "Get started", lalu aktifkan Anonymous.';
+  if(s.includes('unauthorized-domain'))return 'Domain situs ini belum diizinkan. Authentication → Settings → Authorized domains → tambahkan "'+location.hostname+'".';
+  if(s.includes('api-key')||s.includes('invalid-api'))return 'API key salah. Periksa config.js.';
+  if(s.includes('permission_denied')||s.includes('permission denied'))return 'Aturan database menolak akses. Realtime Database → Rules → tempel isi database.rules.json → Publish.';
+  if(s.includes('dynamically imported module')||s.includes('module'))return 'Gagal memuat Firebase SDK dari gstatic.com (diblokir jaringan, VPN, atau pemblokir iklan).';
+  if(s.includes('timeout')||s.includes('network')||s.includes('failed to fetch'))return 'Koneksi ke Firebase gagal atau terlalu lama. Cek internet / matikan VPN.';
+  return String((e&&e.message)||e||'Kesalahan tidak dikenal');
+}
 
 class LocalTransport{
   connect(me,cb){
@@ -27,38 +46,64 @@ class LocalTransport{
 }
 
 class FirebaseTransport{
-  async connect(me,cb){
-    const base='https://www.gstatic.com/firebasejs/10.12.2/';
-    const [A,Au,D]=await Promise.all([import(base+'firebase-app.js'),import(base+'firebase-auth.js'),import(base+'firebase-database.js')]);
-    this.D=D;const app=A.initializeApp(FIREBASE_CONFIG),auth=Au.getAuth(app);
-    const cred=await Au.signInAnonymously(auth);this.uid=cred.user.uid;this.db=D.getDatabase(app);
+  async connect(me,cb,cfg){
+    const d=cb.diag,base='https://www.gstatic.com/firebasejs/10.12.2/';this.cb=cb;let A,Au,D;
+    try{[A,Au,D]=await Promise.all([import(base+'firebase-app.js'),import(base+'firebase-auth.js'),import(base+'firebase-database.js')]);d('Memuat Firebase SDK',true)}
+    catch(e){d('Memuat Firebase SDK',false,explainErr(e));throw e}
+    this.D=D;let app,auth;
+    try{app=A.initializeApp(cfg);auth=Au.getAuth(app)}catch(e){d('Inisialisasi Firebase',false,explainErr(e));throw e}
+    d('Inisialisasi Firebase',true,cfg.projectId||'');
+    try{const cred=await Au.signInAnonymously(auth);this.uid=cred.user.uid;d('Login anonim',true)}
+    catch(e){d('Login anonim',false,explainErr(e));throw e}
+    this.db=D.getDatabase(app);
     this.meRef=D.ref(this.db,'players/'+this.uid);D.onDisconnect(this.meRef).remove();
+    const bad=step=>e=>d(step,false,explainErr(e));
     const pr=D.ref(this.db,'players');
-    D.onChildAdded(pr,s=>cb.player('add',s.key,s.val()));D.onChildChanged(pr,s=>cb.player('change',s.key,s.val()));D.onChildRemoved(pr,s=>cb.player('remove',s.key,null));
+    D.onChildAdded(pr,s=>cb.player('add',s.key,s.val()),bad('Baca data pemain'));
+    D.onChildChanged(pr,s=>cb.player('change',s.key,s.val()),bad('Baca data pemain'));
+    D.onChildRemoved(pr,s=>cb.player('remove',s.key,null),bad('Baca data pemain'));
+    if(D.get)D.get(pr).then(()=>d('Baca data pemain',true)).catch(bad('Baca data pemain'));
     const q=D.query(D.ref(this.db,'chat'),D.orderByChild('t'),D.limitToLast(NET_CFG.chatKeep));
-    const born=Date.now();D.onChildAdded(q,s=>{const m=s.val();cb.chat(s.key,m,!m||!m.t||m.t<born-2000)});
+    const born=Date.now();D.onChildAdded(q,s=>{const m=s.val();cb.chat(s.key,m,!m||!m.t||m.t<born-2000)},bad('Baca chat'));
     return this.uid;
   }
-  setPresence(d){this.D.set(this.meRef,d).catch(()=>{})}
-  pushChat(m){const D=this.D,k=D.push(D.ref(this.db,'chat')).key;m.t=D.serverTimestamp();D.set(D.ref(this.db,'chat/'+k),m).catch(()=>{})}
-  saveProfile(p){this.D.set(this.D.ref(this.db,'profiles/'+this.uid),p).catch(()=>{})}
+  _w(step,p){return p.then(()=>{if(!this['ok'+step]){this['ok'+step]=1;this.cb.diag(step,true)}}).catch(e=>this.cb.diag(step,false,explainErr(e)))}
+  setPresence(d){this._w('Tulis posisi',this.D.set(this.meRef,d))}
+  pushChat(m){const D=this.D,k=D.push(D.ref(this.db,'chat')).key;m.t=D.serverTimestamp();this._w('Kirim chat',D.set(D.ref(this.db,'chat/'+k),m))}
+  saveProfile(p){this._w('Simpan profil',this.D.set(this.D.ref(this.db,'profiles/'+this.uid),p))}
   close(){try{this.D.remove(this.meRef)}catch(e){}}
 }
 
 const Net={
-  mode:'off',tr:null,uid:null,ready:false,me:null,players:new Map(),chat:[],keys:new Set(),
-  _t:0,_hb:0,_last:null,_lastSend:0,onChat:null,
+  mode:'off',tr:null,uid:null,ready:false,me:null,players:new Map(),chat:[],keys:new Set(),diag:[],error:'',
+  _t:0,_hb:0,_last:null,_lastSend:0,onChat:null,onFail:null,
+  /* catat satu langkah diagnosa; kegagalan pertama jadi Net.error */
+  _d(step,ok,msg){
+    const i=this.diag.findIndex(x=>x.step===step),r={step,ok,msg:msg||''};if(i>=0)this.diag[i]=r;else this.diag.push(r);
+    if(!ok){console.warn('[Net] '+step+': '+msg);if(!this.error)this.error=msg;if(this.onFail&&this.ready)this.onFail(step,msg)}
+  },
   async start(profile){
     if(this.ready)return;
+    this.diag=[];this.error='';
     this.me={n:profile.username,id:profile.id,s:profile.shirt,h:profile.hair};
-    const cb={player:(t,u,d)=>this._player(t,u,d),chat:(k,m,h)=>this._chat(k,m,h)};
+    const cb={player:(t,u,d)=>this._player(t,u,d),chat:(k,m,h)=>this._chat(k,m,h),diag:(s,o,m)=>this._d(s,o,m)};
+    const cfg=netConfig(),fb=!!(cfg.apiKey&&cfg.databaseURL);
+    this._d('Konfigurasi Firebase',fb,fb?cfg.projectId||'':'apiKey/databaseURL belum terbaca dari config.js — memakai mode uji lokal.');
     try{
-      const fb=FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey&&FIREBASE_CONFIG.databaseURL;
       this.tr=fb?new FirebaseTransport():new LocalTransport();this.mode=fb?'firebase':'local';
-      this.uid=await Promise.race([this.tr.connect(this.me,cb),new Promise((_,j)=>setTimeout(()=>j(new Error('timeout')),9000))]);
+      this.uid=await Promise.race([this.tr.connect(this.me,cb,cfg),new Promise((_,j)=>setTimeout(()=>j(new Error('timeout: tidak ada respons dari Firebase')),12000))]);
       this.ready=true;
       this.tr.saveProfile({n:profile.username,id:profile.id,h:profile.house,s:profile.shirt,r:profile.hair,c:profile.created});
-    }catch(e){console.warn('Multiplayer tidak tersambung:',e);this.ready=false;this.mode='off';try{this.tr&&this.tr.close()}catch(_){}}
+    }catch(e){
+      console.warn('Multiplayer tidak tersambung:',e);this.ready=false;this.mode='off';
+      if(!this.error)this.error=explainErr(e);
+      try{this.tr&&this.tr.close()}catch(_){}
+    }
+  },
+  async retry(){
+    try{this.tr&&this.tr.close()}catch(e){}
+    this.tr=null;this.ready=false;this.players.clear();this.keys.clear();this.chat.length=0;this._last=null;
+    if(Save.profile)await this.start(Save.profile);
   },
   online(){return this.ready?this.players.size+1:0},
   label(){return {firebase:'Online',local:'Uji lokal',off:'Offline'}[this.mode]},
@@ -79,10 +124,9 @@ const Net={
     if(!hist){const w=msg.u===this.uid?P:this.players.get(msg.u);if(w)w.bubble={text:msg.m,until:performance.now()+6500,tex:null}}
     if(this.onChat)this.onChat(msg);
   },
-  /* kembalikan teks error bila ditolak */
   send(text,reply){
     text=String(text||'').trim().replace(/\s+/g,' ');
-    if(!this.ready)return 'Chat belum tersambung.';
+    if(!this.ready)return 'Chat belum tersambung. Menu → Cek Multiplayer.';
     if(!text)return '';
     if(text.length>NET_CFG.chatMax)return 'Pesan terlalu panjang.';
     if(badText(text))return 'Pesan mengandung kata yang tidak boleh dipakai.';
@@ -90,7 +134,6 @@ const Net={
     this._lastSend=now;
     this.tr.pushChat({u:this.uid,n:this.me.n,m:text,r:reply?{k:reply.k,n:reply.n,m:reply.m.slice(0,60)}:null});return '';
   },
-  /* kirim posisi sendiri & haluskan pemain lain; dipanggil tiap frame */
   tick(dt,pl){
     if(!this.ready)return;
     this._t+=dt;this._hb+=dt;
