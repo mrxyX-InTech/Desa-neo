@@ -5,6 +5,7 @@
 const firebaseConfig = {
   apiKey: "AIzaSyBDxWk1J_66u8s4jwQntrX4VObd0ycfOc0",
   authDomain: "kotaneo.firebaseapp.com",
+  databaseURL: "https://kotaneo-default-rtdb.firebaseio.com",
   projectId: "kotaneo",
   storageBucket: "kotaneo.firebasestorage.app",
   messagingSenderId: "696332215758",
