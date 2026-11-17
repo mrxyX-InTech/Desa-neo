@@ -1,11 +1,11 @@
 'use strict';
 /* world.js — membangun seluruh Kota Neo secara prosedural (low-poly cartoon) + interaksi dunia */
 const World={
-  places:[],own:null,clouds:[],lamps:[],stats:{},seats:[],
+  places:[],own:null,clouds:[],lamps:[],stats:{},seats:[],lotProps:[],
   build(){
     const G=R.batch('ground',{cast:0,recv:1,ao:0}),S=R.batch('solid',{cast:1,recv:1,ao:1}),SG=R.batch('signs',{cast:0,recv:1,ao:0,tex:1}),
       LB=R.batch('lamp',{cast:0,recv:0,ao:0,night:1,gmix:1}),PL=R.batch('pools',{cast:0,recv:0,ao:0},false),ST=R.batch('stars',{cast:0,recv:0,ao:0},false);
-    const P_=this.places=[];this.lamps=[];this.seats=[];
+    const P_=this.places=[];this.lamps=[];this.seats=[];this.lotProps=[];
     const INK=PAL.ink,CREAM=PAL.cream;
 
     /* ---------- helper primitif ---------- */
@@ -202,20 +202,25 @@ const World={
     LOTS.forEach((l,li)=>{
       const uv=board('lot_'+l.id,640,240,l.name,l.sub,{hazard:true,size:64});
       slab(G,PAL.dirt,l.x0,l.z0,l.x1,l.z1,0,.04);
-      for(let i=0;i<14;i++)cyl(G,PAL.dirt2,l.x0+4+rnd(li*50+i)*(l.x1-l.x0-8),.04,l.z0+4+rnd(li*50+i+20)*(l.z1-l.z0-8),1.5+rnd(i+li)*2.6,.01,10,1);
+      for(let i=0;i<14;i++){const r=1.5+rnd(i+li)*2.2,x=Math.min(l.x1-r-.6,Math.max(l.x0+r+.6,l.x0+4+rnd(li*50+i)*(l.x1-l.x0-8))),z=Math.min(l.z1-r-.6,Math.max(l.z0+r+.6,l.z0+4+rnd(li*50+i+20)*(l.z1-l.z0-8)));cyl(G,PAL.dirt2,x,.04,z,r,.01,10,1)}
       // pagar proyek (tembus pandang)
       const pf=(x0,z0,x1,z1)=>{const dx=x1-x0,dz=z1-z0,len=Math.hypot(dx,dz),n=Math.max(1,Math.round(len/2.6));
         for(let i=0;i<=n;i++){const t=i/n;box(S,'#e3342f',x0+dx*t,.75,z0+dz*t,.16,1.5,.16);box(S,'#fff8e6',x0+dx*t,1.52,z0+dz*t,.2,.08,.2)}
         const ex=Math.abs(dx)+.1,ez=Math.abs(dz)+.1;box(S,'#ff7a2f',(x0+x1)/2,1.15,(z0+z1)/2,ex,.12,ez);box(S,'#fff8e6',(x0+x1)/2,.65,(z0+z1)/2,ex,.12,ez);box(S,'#ff7a2f',(x0+x1)/2,.25,(z0+z1)/2,ex,.1,ez);
         solid(Math.min(x0,x1)-.1,Math.min(z0,z1)-.1,Math.max(x0,x1)+.1,Math.max(z0,z1)+.1,1.5,{cam:false})};
       pf(l.x0,l.z0,l.x1,l.z0);pf(l.x0,l.z1,l.x1,l.z1);pf(l.x0,l.z0,l.x0,l.z1);pf(l.x1,l.z0,l.x1,l.z1);
-      // properti di sudut yang jauh dari rute pekerja
-      const wx=l.x1-l.x0,wz=l.z1-l.z0;
-      const px=(l.face==='+x')?l.x0+8:(l.face==='-x'?l.x1-8:l.x0+10),pz=(l.face==='+z')?l.z0+7:l.z0+7;
-      box(S,'#fff8e6',px,1.3,pz,5.2,2.2,2.6);box(S,'#3a6ea5',px,2.5,pz,5.5,.25,2.9);box(S,PAL.glassDark,px,1.6,pz+1.31,1.4,.8,.05);box(S,'#e3342f',px+1.7,1.0,pz+1.31,.8,1.9,.05);sol2(px,pz,5.4,2.8,2.5);
-      for(let i=0;i<5;i++){const x=px+6+rnd(li*9+i)*Math.min(14,wx*.3),z=pz+rnd(li*9+i+5)*3;ball(S,PAL.dirt2,x,.5,z,1.5+rnd(i)*1.1,.9+rnd(i+1)*.5,1.5+rnd(i+2)*1.1);sol2(x,z,2.2,2.2,.9,{cam:false})}
-      for(let i=0;i<3;i++){const x=px+3,z=pz+3.6+i*.8;cyl(S,'#9aa3b0',x-1.4+i*.2,.35+i*.0,z,.38,2.8,10,1)}
-      for(let i=0;i<4;i++)cone(l.x0+3+i*2.2,l.z0+3);
+      // properti di sudut belakang lahan (jauh dari jalan & rute pekerja). SEMUA dijepit agar tetap di dalam pagar.
+      const wx=l.x1-l.x0,mg=2.8,dir=(l.face==='-x')?-1:1;
+      const inX=(x,r)=>Math.min(l.x1-mg-r,Math.max(l.x0+mg+r,x)),inZ=(z,r)=>Math.min(l.z1-mg-r,Math.max(l.z0+mg+r,z));
+      const reg=(kind,x,z,r)=>{(this.lotProps=this.lotProps||[]).push({lot:l.id,kind,x,z,r})};
+      const px=(l.face==='+x')?l.x0+8:(l.face==='-x'?l.x1-8:l.x0+10),pz=l.z0+7;
+      box(S,'#fff8e6',px,1.3,pz,5.2,2.2,2.6);box(S,'#3a6ea5',px,2.5,pz,5.5,.25,2.9);box(S,PAL.glassDark,px,1.6,pz+1.31,1.4,.8,.05);box(S,'#e3342f',px+1.7,1.0,pz+1.31,.8,1.9,.05);sol2(px,pz,5.4,2.8,2.5);reg('kabin',px,pz,2.8);
+      for(let i=0;i<5;i++){ // gundukan tanah: menjauh dari kabin ke arah dalam lahan
+        const r=1.5+rnd(i)*1.1,x=inX(px+dir*(6+rnd(li*9+i)*Math.min(14,wx*.3)),r+.3),z=inZ(pz+rnd(li*9+i+5)*3,r+.3);
+        ball(S,PAL.dirt2,x,.5,z,r,.9+rnd(i+1)*.5,r);sol2(x,z,r*1.5,r*1.5,.9,{cam:false});reg('tanah',x,z,r)}
+      for(let i=0;i<3;i++){const x=inX(px+dir*3,.6),z=inZ(pz+3.6+i*.8,.6);cyl(S,'#9aa3b0',x-1.4*dir+i*.2,.35,z,.38,2.8,10,1);reg('pipa',x-1.4*dir+i*.2,z,.4)}
+      for(let i=0;i<4;i++){const x=inX(l.x0+3+i*2.2,.4),z=inZ(l.z0+3,.4);cone(x,z);reg('kerucut',x,z,.3)}
+
       // papan nama di luar pagar, menghadap jalan
       const f=l.face,off=1.9;let bx,bz;
       if(f==='+x'){bx=l.x1+off;bz=(l.z0+l.z1)/2}else if(f==='-x'){bx=l.x0-off;bz=(l.z0+l.z1)/2}else{bx=(l.x0+l.x1)/2;bz=l.z1+off}
