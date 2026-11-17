@@ -153,3 +153,5 @@ const Net={
     if(P.bubble&&now>P.bubble.until)P.bubble=null;
   }
 };
+// Ekspos Net ke seluruh file
+globalThis.Net = Net;
