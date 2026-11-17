@@ -33,6 +33,7 @@ const UI={
     $('chatRX').onclick=()=>this.setReply(null);
     Input.onChat=e=>{e.preventDefault();this.chatToggle(true)};
     Net.onChat=m=>this.chatAdd(m);
+    Net.onFail=(s,m)=>this.toast('Multiplayer: '+s+' gagal. Buka Menu → Cek Multiplayer',4500);
     // keyboard HP: tetapkan panel chat di atas keyboard
     if(window.visualViewport){const f=()=>{const v=visualViewport,b=Math.max(0,innerHeight-v.height-v.offsetTop);$('chat').style.bottom=`calc(var(--sb) + ${Math.round(b)+8}px)`};visualViewport.addEventListener('resize',f);visualViewport.addEventListener('scroll',f)}
     this.hud(false);
@@ -115,12 +116,12 @@ const UI={
     if(this.modalOpen&&!$('modal').classList.contains('on'))return;
     const g=Game;
     this.card('Menu',`<div class="stack">
-      <button class="btn" id="mK">KTP Digital</button><button class="btn" id="mS">Status Episode</button><button class="btn" id="mA">Papan Pengumuman</button>
+      <button class="btn" id="mK">KTP Digital</button><button class="btn" id="mS">Status Episode</button><button class="btn" id="mA">Papan Pengumuman</button><button class="btn" id="mN">Cek Multiplayer</button>
       <a class="btn green" href="${TIKTOK.url}" target="_blank" rel="noopener">TikTok ${esc(TIKTOK.handle)}</a>
       <button class="btn" id="mP">Simpan Posisi</button>
       <button class="btn alt" id="mT">Waktu kota: ${g.timeLabel()}</button><button class="btn alt" id="mQ">Kualitas: ${g.hiQ?'Tinggi':'Hemat'}</button>
       <button class="btn red" id="mR">Ganti Pemain</button></div>`);
-    $('mK').onclick=()=>this.ktp();$('mS').onclick=()=>this.status();$('mA').onclick=()=>this.announce();
+    $('mK').onclick=()=>this.ktp();$('mS').onclick=()=>this.status();$('mA').onclick=()=>this.announce();$('mN').onclick=()=>this.netDiag();
     $('mP').onclick=()=>{Game.savePos();this.closeModal();this.toast('Posisi tersimpan')};
     $('mT').onclick=()=>{g.cycleTime();$('mT').textContent='Waktu kota: '+g.timeLabel()};
     $('mQ').onclick=()=>{g.toggleQuality();$('mQ').textContent='Kualitas: '+(g.hiQ?'Tinggi':'Hemat')};
@@ -155,7 +156,7 @@ const UI={
       <ul class="qlist">${items}</ul>
       <p><b>Episode 2 — Proyek ${esc(pr.nama)}</b><br>${esc(pr.tahap)} · ${Announce.pct()}%</p><div class="bar"><i style="width:${Announce.pct()}%"></i></div>
       <p><b>Segera dibuka</b></p><ul class="qlist">${later}</ul>
-      <p class="note">Multiplayer: ${esc(Net.label())}${Net.ready?' · '+Net.online()+' online':''}</p>
+      <p class="note">Multiplayer: ${esc(Net.label())}${Net.ready?' · '+Net.online()+' online':''}${Net.error?' · '+esc(Net.error):''}</p>
       <div class="stack"><button class="btn alt" id="sb">◂ Kembali</button></div>`);
     $('sb').onclick=()=>this.menu();
   },
@@ -171,6 +172,16 @@ const UI={
       <table class="rtab">${rows}<tr class="tot"><td>Total rencana</td><td>${fmtJuta(tot)}</td></tr></table>
       <p class="note">${esc(A.catatan)}</p>${warga}<p class="note">Diperbarui: ${esc(A.updated)}</p>
       <div class="stack"><a class="btn green" href="${TIKTOK.url}" target="_blank" rel="noopener">Follow ${esc(TIKTOK.handle)}</a></div>`);
+  },
+
+  /* ---------- diagnosa multiplayer ---------- */
+  netDiag(){
+    const rows=Net.diag.map(d=>`<li class="${d.ok?'ok':'now'}"><i>${d.ok?'✓':'!'}</i><span>${esc(d.step)}${d.msg?`<br><small style="font-weight:700;font-size:12px">${esc(d.msg)}</small>`:''}</span></li>`).join('')
+      ||'<li class="lock"><i>–</i><span>Belum ada data: game belum mencoba menyambung.</span></li>';
+    this.card('Cek Multiplayer',`<p>Mode: <b>${esc(Net.label())}</b>${Net.ready?` · ${Net.online()} online`:''}</p><ul class="qlist">${rows}</ul>
+      ${Net.error&&!Net.diag.some(d=>d.msg===Net.error)?`<p class="note" style="color:#c0392b">${esc(Net.error)}</p>`:''}
+      <div class="stack"><button class="btn green" id="nr">Coba sambung ulang</button><button class="btn alt" id="nb">◂ Kembali</button></div>`);
+    $('nr').onclick=async()=>{$('nr').textContent='Menyambung…';await Net.retry();this.netDiag()};$('nb').onclick=()=>this.menu();
   },
 
   /* ---------- chat ---------- */
