@@ -37,9 +37,17 @@ class LocalTransport{
   }
   setPresence(d){this.last=d;this.bc.postMessage({t:'pres',u:this.uid,d})}
   pushChat(m){
-    const k=Date.now().toString(36)+Math.random().toString(36).slice(2,5);m.t=Date.now();
-    this.bc.postMessage({t:'chat',k,m});this.cb.chat(k,m,false);
-    try{const a=JSON.parse(localStorage.getItem('kotaneo.localchat')||'[]');a.push({k,m});localStorage.setItem('kotaneo.localchat',JSON.stringify(a.slice(-NET_CFG.chatKeep)))}catch(e){}
+  const D=this.D;
+  const ref=D.push(D.ref(this.db,'chat'));
+
+  m.t=D.serverTimestamp();
+
+  console.log('[KOTANEO] Mengirim chat:', {
+    uid: this.uid,
+    message: m
+  });
+
+  this._w('Kirim chat',D.set(ref,m));
   }
   saveProfile(){}
   close(){try{this.bc.postMessage({t:'bye',u:this.uid});this.bc.close()}catch(e){}}
