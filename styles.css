@@ -153,3 +153,8 @@ body.chat-open.chat-full #ctl,body.chat-open.chat-full #joyBase,body.chat-open.c
 }
 @media (max-width:520px){#brand{font-size:17px}#brand small{display:none}.chip{font-size:15px}#modeBar .chip{padding:6px 9px;font-size:14px}}
 @media (max-height:520px){#hint{top:72%}#toast{top:calc(var(--st) + 120px)}}
+
+/* indikator online (selalu terlihat, di bawah tombol Chat/Atas/Menu) */
+#onl{position:fixed;right:calc(var(--sr) + 10px);top:calc(var(--st) + 58px);z-index:6;display:flex;gap:6px;align-items:center;font-size:13px;padding:3px 10px;pointer-events:none}
+#onl i{width:10px;height:10px;border-radius:50%;background:#b9b2a2;border:2px solid var(--ink);display:inline-block}
+#onl.ok i{background:var(--green)}
