@@ -10,6 +10,7 @@ const UI={
       <div id="top"><div id="brand">KOTA NEO <small id="clock">--:--</small></div>
         <div id="quest" class="chip"></div><div id="goal" class="chip"><i>▲</i><span></span></div></div>
       <div id="modeBar"><button class="chip btn" id="bChat">Chat<i id="chatBadge"></i></button><button class="chip btn" id="bTop">Atas</button><button class="chip btn" id="bMenu">Menu</button></div>
+      <div id="onl" class="chip"><i></i><span>Offline</span></div>
       <div id="joyBase" aria-label="Joystick"><i id="joyKnob"></i></div>
       <div id="near" class="chip btn"></div>
       <div id="ctl"><button class="rbtn" id="bJump">LOMPAT</button><button class="rbtn" id="bRun">LARI</button><button class="rbtn" id="bAct">AKSI</button></div>
@@ -41,8 +42,15 @@ const UI={
   _sync(){document.body.classList.toggle('mo',this.modalOpen);document.body.classList.toggle('chat-open',this.chatOpen);document.body.classList.toggle('chat-full',innerWidth<=640)},
   setLoad(p,msg){$('loadBar').style.width=Math.round(p*100)+'%';if(msg)$('loadMsg').textContent=msg},
   hideLoad(){$('load').classList.add('off');setTimeout(()=>{$('load').style.display='none'},600)},
-  hud(on){for(const id of ['top','modeBar','ctl','near','joyBase'])$(id).style.display=on?'':'none';if(!on){$('hint').style.display='none';this.chatToggle(false)}},
-  setClock(s){$('clock').textContent=s},
+  hud(on){for(const id of ['top','modeBar','ctl','near','joyBase','onl'])$(id).style.display=on?'':'none';if(!on){$('hint').style.display='none';this.chatToggle(false)}},
+  setClock(s){$('clock').textContent=s;this.refreshOnline()},
+  /* indikator online selalu terlihat (termasuk di HP) + daftar nama di panel chat */
+  refreshOnline(){
+    const o=$('onl');if(!o)return;const ok=Net.ready&&Net.mode==='firebase';
+    o.classList.toggle('ok',ok);
+    o.lastElementChild.textContent=Net.ready?(Net.mode==='firebase'?`${Net.online()} online`:`${Net.label()} · ${Net.online()}`):'Offline';
+    if(this.chatOpen){const n=Net.names();$('chatStat').textContent=Net.ready?`${Net.label()} · ${Net.online()} online${n.length?' — '+n.slice(0,6).join(', '):''}`:'Belum tersambung'}
+  },
   setQuest(html){$('quest').innerHTML=html},
   setGoal(ang,dist,show){const g=$('goal');g.style.display=show?'flex':'none';if(!show)return;g.firstElementChild.style.transform=`rotate(${ang}rad)`;g.lastElementChild.textContent=Math.round(dist)+' m'},
   setNear(label){const n=$('near'),a=$('bAct');if(label){n.style.display='block';n.textContent=label;a.classList.add('ready')}else{n.style.display='none';a.classList.remove('ready')}},
@@ -179,6 +187,9 @@ const UI={
     const rows=Net.diag.map(d=>`<li class="${d.ok?'ok':'now'}"><i>${d.ok?'✓':'!'}</i><span>${esc(d.step)}${d.msg?`<br><small style="font-weight:700;font-size:12px">${esc(d.msg)}</small>`:''}</span></li>`).join('')
       ||'<li class="lock"><i>–</i><span>Belum ada data: game belum mencoba menyambung.</span></li>';
     this.card('Cek Multiplayer',`<p>Mode: <b>${esc(Net.label())}</b>${Net.ready?` · ${Net.online()} online`:''}</p><ul class="qlist">${rows}</ul>
+      ${Net.ready?`<p class="note">ID sesi kamu: <b>${esc(String(Net.uid).slice(0,10))}…</b><br>
+      Pemain terbaca di database: <b>${Net.stat.dbPlayers===undefined?'?':Net.stat.dbPlayers}</b> (termasuk kamu) · terlihat di game: <b>${Net.players.size}</b> lain<br>
+      Sinkron terakhir: <b>${Net.stat.syncAt?Math.round((Date.now()-Net.stat.syncAt)/1000)+' dtk lalu':'belum'}</b> · tulis posisi: <b>${Net.stat.writeAt?Math.round((Date.now()-Net.stat.writeAt)/1000)+' dtk lalu':'belum'}</b>${Net.stat.writeOk===false?' (GAGAL)':''}</p>`:''}
       ${Net.error&&!Net.diag.some(d=>d.msg===Net.error)?`<p class="note" style="color:#c0392b">${esc(Net.error)}</p>`:''}
       <div class="stack"><button class="btn green" id="nr">Coba sambung ulang</button><button class="btn alt" id="nb">◂ Kembali</button></div>`);
     $('nr').onclick=async()=>{$('nr').textContent='Menyambung…';await Net.retry();this.netDiag()};$('nb').onclick=()=>this.menu();
@@ -188,7 +199,7 @@ const UI={
   chatToggle(force){
     const on=force===undefined?!this.chatOpen:force;if(on===this.chatOpen)return;
     this.chatOpen=on;$('chat').classList.toggle('on',on);this._sync();
-    if(on){this.unread=0;this._badge();Input.reset();$('chatStat').textContent=Net.ready?`${Net.label()} · ${Net.online()} online`:'Belum tersambung';this.chatRender();
+    if(on){this.unread=0;this._badge();Input.reset();this.refreshOnline();this.chatRender();
       if(!matchMedia('(pointer:coarse)').matches)setTimeout(()=>$('chatIn').focus(),50)}
     else{try{$('chatIn').blur()}catch(_){}}
   },
