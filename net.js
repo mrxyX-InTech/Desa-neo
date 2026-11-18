@@ -3,6 +3,7 @@
    Transport: FirebaseTransport (Realtime Database + login anonim) bila config terisi,
    selain itu LocalTransport (BroadcastChannel antar tab) untuk uji coba. Setiap langkah dicatat di Net.diag
    (lihat Menu → Cek Multiplayer) supaya penyebab kegagalan terlihat jelas. */
+const NET_X={expireMs:45000,syncMs:8000};   // pemain dianggap pergi bila 45 dtk tanpa kabar; sinkron penuh tiap 8 dtk
 const angD=(a,b)=>{let e=a-b;while(e>Math.PI)e-=2*Math.PI;while(e<-Math.PI)e+=2*Math.PI;return e};
 
 /* baca config dari mana pun: globalThis.FIREBASE_CONFIG, globalThis.firebaseConfig, atau const lama */
@@ -53,29 +54,42 @@ class FirebaseTransport{
     this.D=D;let app,auth;
     try{app=A.initializeApp(cfg);auth=Au.getAuth(app)}catch(e){d('Inisialisasi Firebase',false,explainErr(e));throw e}
     d('Inisialisasi Firebase',true,cfg.projectId||'');
-    try{const cred=await Au.signInAnonymously(auth);this.uid=cred.user.uid;d('Login anonim',true)}
+    try{const cred=await Au.signInAnonymously(auth);this.authUid=cred.user.uid;d('Login anonim',true)}
     catch(e){d('Login anonim',false,explainErr(e));throw e}
+    // login anonim dipakai bersama semua tab di satu browser, jadi kunci presence & chat = uid + kode tab
+    let tab=null;try{tab=sessionStorage.getItem('kn.tab');if(!tab){tab=Math.random().toString(36).slice(2,6);sessionStorage.setItem('kn.tab',tab)}}catch(e){tab=Math.random().toString(36).slice(2,6)}
+    this.uid=this.authUid+'_'+tab;
     this.db=D.getDatabase(app);
     this.meRef=D.ref(this.db,'players/'+this.uid);D.onDisconnect(this.meRef).remove();
+    addEventListener('pagehide',()=>{try{D.remove(this.meRef)}catch(e){}});
+    // setelah koneksi putus lalu tersambung lagi: pasang ulang onDisconnect & tulis ulang posisi
+    if(D.onValue)D.onValue(D.ref(this.db,'.info/connected'),s=>{
+      if(s.val()===true){D.onDisconnect(this.meRef).remove();if(this.lastP)D.set(this.meRef,this.lastP).catch(()=>{})}});
     const bad=step=>e=>d(step,false,explainErr(e));
-    const pr=D.ref(this.db,'players');
+    const pr=this.pr=D.ref(this.db,'players');
     D.onChildAdded(pr,s=>cb.player('add',s.key,s.val()),bad('Baca data pemain'));
     D.onChildChanged(pr,s=>cb.player('change',s.key,s.val()),bad('Baca data pemain'));
     D.onChildRemoved(pr,s=>cb.player('remove',s.key,null),bad('Baca data pemain'));
-    if(D.get)D.get(pr).then(()=>d('Baca data pemain',true)).catch(bad('Baca data pemain'));
+    this.sync(true);this._poll=setInterval(()=>this.sync(false),NET_X.syncMs);
     const q=D.query(D.ref(this.db,'chat'),D.orderByChild('t'),D.limitToLast(NET_CFG.chatKeep));
     const born=Date.now();D.onChildAdded(q,s=>{const m=s.val();cb.chat(s.key,m,!m||!m.t||m.t<born-2000)},bad('Baca chat'));
     return this.uid;
   }
-  _w(step,p){return p.then(()=>{if(!this['ok'+step]){this['ok'+step]=1;this.cb.diag(step,true)}}).catch(e=>this.cb.diag(step,false,explainErr(e)))}
-  setPresence(d){this._w('Tulis posisi',this.D.set(this.meRef,d))}
+  /* baca daftar pemain penuh: menambal event yang terlewat & membuang pemain yang sudah pergi */
+  sync(first){
+    const D=this.D;if(!D.get)return;
+    D.get(this.pr).then(snap=>{const seen=[];snap.forEach(ch=>{seen.push(ch.key);this.cb.player('sync',ch.key,ch.val());return false});
+      this.cb.sync(seen);if(first)this.cb.diag('Baca data pemain',true)}).catch(e=>{if(first)this.cb.diag('Baca data pemain',false,explainErr(e))});
+  }
+  _w(step,p){return p.then(()=>{this.cb.stat({writeAt:Date.now(),writeOk:true});if(!this['ok'+step]){this['ok'+step]=1;this.cb.diag(step,true)}}).catch(e=>{this.cb.stat({writeOk:false});this.cb.diag(step,false,explainErr(e))})}
+  setPresence(d){this.lastP=d;this._w('Tulis posisi',this.D.set(this.meRef,d))}
   pushChat(m){const D=this.D,k=D.push(D.ref(this.db,'chat')).key;m.t=D.serverTimestamp();this._w('Kirim chat',D.set(D.ref(this.db,'chat/'+k),m))}
-  saveProfile(p){this._w('Simpan profil',this.D.set(this.D.ref(this.db,'profiles/'+this.uid),p))}
-  close(){try{this.D.remove(this.meRef)}catch(e){}}
+  saveProfile(p){this._w('Simpan profil',this.D.set(this.D.ref(this.db,'profiles/'+this.authUid),p))}
+  close(){clearInterval(this._poll);try{this.D.remove(this.meRef)}catch(e){}}
 }
 
 const Net={
-  mode:'off',tr:null,uid:null,ready:false,me:null,players:new Map(),chat:[],keys:new Set(),diag:[],error:'',
+  mode:'off',tr:null,uid:null,ready:false,me:null,players:new Map(),chat:[],keys:new Set(),diag:[],error:'',stat:{},X:NET_X,_beat:0,gone:new Map(),
   _t:0,_hb:0,_last:null,_lastSend:0,onChat:null,onFail:null,
   /* catat satu langkah diagnosa; kegagalan pertama jadi Net.error */
   _d(step,ok,msg){
@@ -86,7 +100,9 @@ const Net={
     if(this.ready)return;
     this.diag=[];this.error='';
     this.me={n:profile.username,id:profile.id,s:profile.shirt,h:profile.hair};
-    const cb={player:(t,u,d)=>this._player(t,u,d),chat:(k,m,h)=>this._chat(k,m,h),diag:(s,o,m)=>this._d(s,o,m)};
+    const cb={player:(t,u,d)=>this._player(t,u,d),chat:(k,m,h)=>this._chat(k,m,h),diag:(s,o,m)=>this._d(s,o,m),
+      sync:seen=>this._sync(seen),stat:o=>Object.assign(this.stat,o)};
+    if(!this._vis){this._vis=1;document.addEventListener('visibilitychange',()=>{if(!document.hidden)this._hb=99})}
     const cfg=netConfig(),fb=!!(cfg.apiKey&&cfg.databaseURL);
     this._d('Konfigurasi Firebase',fb,fb?cfg.projectId||'':'apiKey/databaseURL belum terbaca dari config.js — memakai mode uji lokal.');
     try{
@@ -102,18 +118,25 @@ const Net={
   },
   async retry(){
     try{this.tr&&this.tr.close()}catch(e){}
-    this.tr=null;this.ready=false;this.players.clear();this.keys.clear();this.chat.length=0;this._last=null;
+    this.tr=null;this.ready=false;this.players.clear();this.gone.clear();this.keys.clear();this.chat.length=0;this._last=null;this.stat={};
     if(Save.profile)await this.start(Save.profile);
   },
   online(){return this.ready?this.players.size+1:0},
+  names(){return [...this.players.values()].map(p=>p.name)},
+  _sync(seen){const s=new Set(seen);for(const u of [...this.players.keys()])if(!s.has(u))this.players.delete(u);this.stat.dbPlayers=seen.length;this.stat.syncAt=Date.now()},
   label(){return {firebase:'Online',local:'Uji lokal',off:'Offline'}[this.mode]},
   _player(type,uid,d){
     if(uid===this.uid)return;
     if(type==='remove'){this.players.delete(uid);return}
     if(!d||typeof d.x!=='number')return;
+    this.stat.eventAt=Date.now();
+    const beat=d.b;
+    // pemain yang sudah kedaluwarsa & tidak ada tanda kehidupan baru (detak sama) tidak dihidupkan lagi oleh sinkron berkala
+    if(beat!==undefined&&this.gone.has(uid)){if(this.gone.get(uid)===beat)return;this.gone.delete(uid)}
     let p=this.players.get(uid);
-    if(!p){p={uid,x:d.x,z:d.z,yaw:d.y||0,phase:0,amt:0,bubble:null,name:'',tag:null,sit:0};this.players.set(uid,p)}
-    p.tx=d.x;p.tz=d.z;p.tyaw=d.y||0;p.sit=d.o?1:0;p.last=performance.now();
+    if(!p){p={uid,x:d.x,z:d.z,yaw:d.y||0,phase:0,amt:0,bubble:null,name:'',tag:null,sit:0,b:undefined,last:0};this.players.set(uid,p)}
+    const alive=type!=='sync'||p.last===0||p.b!==beat||p.tx!==d.x||p.tz!==d.z;   // sinkron hanya menyegarkan bila ada tanda kehidupan baru
+    p.b=beat;p.tx=d.x;p.tz=d.z;p.tyaw=d.y||0;p.sit=d.o?1:0;if(alive)p.last=performance.now();
     const nm=String(d.n||'warga').slice(0,24);if(nm!==p.name){p.name=nm;p.tag=nameTex(nm,'#fff8e6','#2b1a0e')}
     p.look={shirt:/^#[0-9a-f]{6}$/i.test(d.s)?d.s:'#6cc3f5',hair:/^#[0-9a-f]{6}$/i.test(d.h)?d.h:'#2b1a0e',skin:'#ffd9b8',style:'short'};
   },
@@ -136,15 +159,15 @@ const Net={
   },
   tick(dt,pl){
     if(!this.ready)return;
-    this._t+=dt;this._hb+=dt;
+    const now=performance.now(),real=Math.min(5,(now-(this._lastTick||now))/1000);this._lastTick=now;   // waktu nyata (tidak ikut melambat di HP berFPS rendah)
+    this._t+=real;this._hb+=real;
     const o=pl.sit?1:0,L=this._last;
     const moved=!L||Math.hypot(pl.x-L.x,pl.z-L.z)>.08||Math.abs(angD(pl.yaw,L.y))>.15||L.o!==o;
     if((moved&&this._t>=NET_CFG.sendMoving)||this._hb>=NET_CFG.heartbeat){
-      const d={n:this.me.n,x:+pl.x.toFixed(1),z:+pl.z.toFixed(1),y:+pl.yaw.toFixed(2),s:this.me.s,h:this.me.h,o};
+      const d={n:this.me.n,x:+pl.x.toFixed(1),z:+pl.z.toFixed(1),y:+pl.yaw.toFixed(2),s:this.me.s,h:this.me.h,o,b:++this._beat};
       this.tr.setPresence(d);this._last={x:pl.x,z:pl.z,y:pl.yaw,o};this._t=0;this._hb=0}
-    const now=performance.now();
     for(const [u,p] of this.players){
-      if(now-p.last>45000){this.players.delete(u);continue}
+      if(now-p.last>NET_X.expireMs){if(p.b!==undefined)this.gone.set(u,p.b);this.players.delete(u);continue}
       const dx=p.tx-p.x,dz=p.tz-p.z,k=Math.min(1,dt*9),sp=Math.hypot(dx,dz)/Math.max(dt,.001);
       p.x+=dx*k;p.z+=dz*k;p.yaw+=angD(p.tyaw,p.yaw)*Math.min(1,dt*10);
       const a=Math.min(1,sp/4.4);p.amt+=(a-p.amt)*Math.min(1,dt*8);if(p.sit)p.amt=0;p.phase+=sp*dt*1.9;
@@ -153,5 +176,3 @@ const Net={
     if(P.bubble&&now>P.bubble.until)P.bubble=null;
   }
 };
-// Ekspos Net ke seluruh file
-globalThis.Net = Net;
