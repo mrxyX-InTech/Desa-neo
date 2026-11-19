@@ -93,7 +93,7 @@ class Batch{
 }
 
 /* ---------- atlas teks: semua papan/tulisan statis dalam satu texture ---------- */
-const Atlas={W:2048,H:2048,cv:null,cx:null,x:0,y:0,rowH:0,uv:{},tex:null,
+const Atlas={W:2048,H:2560,cv:null,cx:null,x:0,y:0,rowH:0,uv:{},tex:null,
   init(){this.cv=document.createElement('canvas');this.cv.width=this.W;this.cv.height=this.H;this.cx=this.cv.getContext('2d');this.x=this.y=this.rowH=0;this.uv={}},
   add(key,w,h,draw){
     if(this.uv[key])return this.uv[key];
