@@ -23,18 +23,18 @@
 
 <div id="ui"></div>
 
-<!-- urutan penting: data → config → save → collision → renderer → kamera → pemain → net → npc → dunia → ui → main -->
-<script src="data.js"></script>
-<script src="config.js"></script>
-<script src="save.js"></script>
-<script src="collision.js"></script>
-<script src="renderer.js"></script>
-<script src="camera.js"></script>
-<script src="player.js"></script>
-<script src="net.js"></script>
-<script src="npc.js"></script>
-<script src="world.js"></script>
-<script src="ui.js"></script>
-<script src="main.js"></script>
+<!-- Skrip dimuat berurutan dengan penanda waktu (?v=) agar browser/GitHub Pages TIDAK memakai file lama dari cache.
+     Urutan penting: data → config → save → collision → renderer → kamera → pemain → net → npc → dunia → ui → main -->
+<script>
+(function(){
+  var files=['data','config','save','collision','renderer','camera','player','net','npc','world','ui','main'],v=Date.now(),i=0;
+  function fail(f){var m=document.getElementById('loadMsg');if(m)m.textContent='Gagal memuat file: '+f+'.js — periksa apakah file itu sudah diunggah ke GitHub.';var e=document.getElementById('load');if(e)e.style.display='flex'}
+  (function next(){
+    if(i>=files.length)return;var f=files[i++],s=document.createElement('script');
+    s.src=f+'.js?v='+v;s.async=false;s.onload=next;s.onerror=function(){fail(f)};document.body.appendChild(s)
+  })()
+})();
+</script>
+<noscript>Game ini membutuhkan JavaScript.</noscript>
 </body>
 </html>
