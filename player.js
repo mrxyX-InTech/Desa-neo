@@ -65,7 +65,16 @@ const Input={
 
 function placePlayer(x,z,yaw){P.x=x;P.z=z;P.y=0;P.vy=0;P.vx=P.vz=0;P.yaw=yaw;P.moveAmt=0;P.grounded=true;P.phase=0;P.sit=null}
 function sitDown(s){P.sit=s;P.x=s.x;P.z=s.z;P.yaw=s.yaw;P.y=0;P.vx=P.vz=0;P.vy=0;P.moveAmt=0}
-function standUp(){const s=P.sit;if(!s)return;P.sit=null;P.x=s.x+Math.sin(s.yaw)*.85;P.z=s.z+Math.cos(s.yaw)*.85;P.y=0;P.vx=P.vz=0;P.vy=0;collide(P);P.grounded=true}
+function standUp(){
+  const s=P.sit;if(!s)return;P.sit=null;
+  // cari titik berdiri yang kosong di sekitar kursi: arah belakang/depan/samping dulu, lalu cincin makin lebar
+  let spot=null;
+  for(const r of [.9,1.2,1.6,2.0,2.6]){
+    for(let k=0;k<12&&!spot;k++){const a=s.yaw+[Math.PI,0,Math.PI/2,-Math.PI/2,Math.PI*.75,-Math.PI*.75,Math.PI*.25,-Math.PI*.25,Math.PI*.5+.4,-Math.PI*.5-.4,Math.PI*.9,-Math.PI*.9][k];
+      const x=s.x+Math.sin(a)*r,z=s.z+Math.cos(a)*r;if(!hitSolid(x,z,.34))spot=[x,z]}
+    if(spot)break}
+  if(!spot)spot=[s.x+Math.sin(s.yaw+Math.PI)*.9,s.z+Math.cos(s.yaw+Math.PI)*.9];
+  P.x=spot[0];P.z=spot[1];P.y=0;P.vx=P.vz=0;P.vy=0;collide(P);P.grounded=true}
 
 function updatePlayer(dt,frozen){
   if(P.sit){
