@@ -48,6 +48,18 @@ const Game={
     return this.timeMode==='day'?12:this.timeMode==='night'?22:wibHour();
   },
   savePos(){if(Save.profile&&this.state==='play')Save.savePos(P.x,P.z,P.yaw)},
+  /* periksa apakah semua file game sudah versi terbaru & saling cocok (mencegah 'sekolah tidak muncul' karena file lama) */
+  integrity(){
+    const ok=f=>{try{return !!f()}catch(e){return false}};
+    const checks=[
+      ['data.js',()=>typeof SCHOOL!=='undefined'&&typeof NET_CFG!=='undefined'&&NPC_DEFS.some(n=>n.id==='guru')],
+      ['world.js',()=>String(World.build).includes('SCHOOL')&&World.roofs!==undefined&&World.places.some(p=>p.id==='papan_tulis')],
+      ['renderer.js',()=>Atlas.H>=2560],
+      ['player.js',()=>String(standUp).includes('hitSolid')],
+      ['net.js',()=>typeof NET_X!=='undefined'&&Net.X===NET_X],
+      ['ui.js',()=>typeof UI.netDiag==='function'&&typeof UI.refreshOnline==='function']];
+    return checks.filter(c=>!ok(c[1])).map(c=>c[0]);
+  },
 
   /* ---------- mulai bermain ---------- */
   startGame(first){
@@ -165,6 +177,7 @@ async function boot(){
     Input.onCam=()=>{if(Game.state!=='play'||UI.modalOpen)return;Cam.setMode(Cam.top?'walk':'top');UI.setCamBtn(Cam.top)};
     Input.onEsc=()=>{if(UI.dialogOpen())UI.closeDialog();else if($('modal').classList.contains('on'))UI.closeModal();else if(Game.state==='play')UI.menu()};
     UI.setLoad(.95,'Hampir siap…');await tick();
+    const stale=Game.integrity();if(stale.length)console.warn('File belum sinkron:',stale);
     const p=Save.load();
     placePlayer(SPAWN.x,SPAWN.z,SPAWN.yaw);
     let last=performance.now();
@@ -176,8 +189,11 @@ async function boot(){
     requestAnimationFrame(frame);
     UI.setLoad(1,'Selamat datang!');UI.hideLoad();
     UI.followGate(()=>{if(p)Game.startGame(false);else UI.login(name=>Game.startIntro(name))});
+    if(stale.length)UI.card('File game belum sinkron',`<p>File berikut masih <b>versi lama</b> atau belum terunggah: <b>${stale.map(esc).join(', ')}</b>.</p>
+      <p>Sekolah dan fitur baru tidak akan muncul sebelum semua file diganti. Unggah ulang file tersebut ke GitHub, tunggu 1–3 menit sampai GitHub Pages selesai deploy, lalu buka lagi dengan refresh paksa (Ctrl+F5, atau di HP: hapus cache / buka tab incognito).</p>
+      <div class="stack"><button class="btn" id="stOk">Mengerti</button></div>`),$('stOk').onclick=()=>UI.closeModal();
     document.addEventListener('visibilitychange',()=>{if(document.hidden)Game.savePos()});addEventListener('pagehide',()=>Game.savePos());
-    window.KN={Game,P,Cam,World,NPCs,Quest,R,Save,Input,UI,Net};
+    window.KN={Game,P,Cam,World,NPCs,Quest,R,Save,Input,UI,Net,stale};
   }catch(e){console.error(e);const m=$('loadMsg');if(m)m.textContent='Gagal memuat: '+e.message;window.KN_ERR=e}
 }
 boot();
