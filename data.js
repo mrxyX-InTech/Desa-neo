@@ -66,8 +66,9 @@ COMPLEXES.forEach((c,ci)=>{
 const HOUSE_BY_ID={};for(const h of HOUSES)HOUSE_BY_ID[h.id]=h;
 
 /* lahan kosong untuk episode berikutnya */
+/* Sekolah Neo (sudah dibangun: 1 kelas + lapangan + kantin). Pagar keliling, satu-satunya pintu = gerbang di sisi timur (z = gz). */
+const SCHOOL={x0:-62,z0:-50,x1:-14,z1:-8,gz:-29};
 const LOTS=[
-  {id:'sekolah',name:'SEKOLAH NEO',sub:'SEGERA DIBANGUN',x0:-62,z0:-50,x1:-14,z1:-8,face:'+x'},
   {id:'bermain',name:'TAMAN BERMAIN',sub:'EPISODE BERIKUTNYA',x0:-62,z0:-100,x1:-14,z1:-70,face:'+x'},
   {id:'bioskop',name:'BIOSKOP NEO',sub:'SEGERA HADIR',x0:14,z0:-52,x1:50,z1:-32,face:'-x'},
   {id:'pasar',name:'PASAR MALAM',sub:'SEGERA HADIR',x0:14,z0:-100,x1:60,z1:-70,face:'-x'},
@@ -82,7 +83,7 @@ const QUEST_STEPS=[
   {t:()=>'Temui Pak Satpam di pos gerbang'},
   {t:p=>'Masuk ke '+HOUSE_BY_ID[p.house].cname},
   {t:p=>'Temukan rumah nomor '+questTargetId(p)},
-  {t:()=>'Baca papan pembangunan sekolah atau mall'},
+  {t:()=>'Baca papan pembangunan di salah satu lahan kosong'},
   {t:p=>'Kembali ke rumahmu ('+p.house+')'}
 ];
 for(const h of HOUSES)h.cname='Komplek '+h.c;
@@ -98,7 +99,7 @@ const NPC_DEFS=[
    lines:['Komplek ini baru dibuka, lho. Anginnya enak sekali kalau pagi.','Aku suka jalan kaki di sini. Sepi, tidak ada klakson.']},
   {id:'kevin',name:'Kevin',role:'Warga Komplek A',shirt:'#6cc3f5',hair:'#4a2e1c',skin:'#e8b98f',style:'short',bag:'#e3342f',
    pts:[[-14,40.3],[-45,40.3]],mode:'ping',speed:1.3,wait:[1.5,4],
-   lines:['Sekolahnya belum dibangun. Katanya tinggal tunggu warga ramai.','Aku lagi menghafal nomor rumah. Semuanya mirip-mirip, ya?']},
+   lines:['Sekolahnya sudah ada satu kelas, lho. Ayo mampir ke sana!','Aku lagi menghafal nomor rumah. Semuanya mirip-mirip, ya?']},
   {id:'sari',name:'Mbak Sari',role:'Warga Komplek B',shirt:'#c79bf2',hair:'#6b3f22',skin:'#ffd9b8',style:'long',dress:true,
    pts:(()=>{const a=[];for(let i=0;i<8;i++){const t=i/8*Math.PI*2;a.push([53+Math.cos(t)*5.4,44+Math.sin(t)*5.4])}return a})(),mode:'loop',speed:1,wait:[.5,2],
    lines:['Katanya mall akan dibuat di sebelah utara. Besar sekali!','Tamannya kosong, tapi justru enak buat duduk-duduk.']},
@@ -108,9 +109,12 @@ const NPC_DEFS=[
   {id:'dina',name:'Dina',role:'Pejalan Kaki',shirt:'#ffd166',hair:'#2b1a0e',skin:'#ffd9b8',style:'long',
    pts:[[8.6,-9],[8.6,-48]],mode:'ping',speed:1.2,wait:[2,4],
    lines:['Katanya bakal ada bioskop sama pasar malam. Aku sudah tidak sabar!','Jalannya lebar-lebar, tapi masih kosong. Nanti pasti ramai.']},
-  {id:'bayu',name:'Mas Bayu',role:'Pekerja Proyek',shirt:'#f7a440',hair:'#2b1a0e',skin:'#c98d62',style:'hat',cap:'#ffd23f',vest:'#ff7a2f',
-   pts:[[-30,-30],[-46,-30],[-46,-20],[-30,-20]],mode:'loop',speed:.9,wait:[1.5,3],
-   lines:['Proyek sekolah masih menunggu giliran. Sabar ya.','Itu pagar proyek, jangan masuk. Bahaya!']}
+  {id:'guru',name:'Bu Guru Ani',role:'Guru Sekolah Neo',shirt:'#ff9fb8',hair:'#2b1a0e',skin:'#ffd9b8',style:'bun',dress:true,
+   pts:[[-19.5,-40],[-19.5,-18]],mode:'ping',speed:.9,wait:[3,6],
+   lines:['Selamat datang di Sekolah Neo! Baru ada satu kelas, tapi nanti akan bertambah.','Kalau dananya terkumpul, nanti ada kelas SD, SMP, dan SMA.','Silakan masuk ke kelas dan duduk di bangku mana saja.']},
+  {id:'kantin',name:'Bu Kantin',role:'Penjaga Kantin',shirt:'#ffd166',hair:'#4a2e1c',skin:'#e8b98f',style:'bun',dress:true,
+   pts:[[-57,-36.3],[-55.6,-36.3]],mode:'ping',speed:.4,wait:[2,5],
+   lines:['Selamat datang di kantin! Menunya nasi goreng, mie ayam, es teh, dan gorengan.','Belum bisa beli dulu ya. Sistem uangnya nanti di episode berikutnya.']}
 ];
 
 /* ---------- TikTok, jaringan, pengumuman ---------- */
