@@ -22,7 +22,7 @@ const Quest={
       case 1:{const n=NPCs.get('satpam');return {x:n.x,z:n.z}}
       case 2:{const c=COMPLEXES.find(c=>c.id===h.c);return {x:c.s*20,z:c.zc}}
       case 3:{const t=HOUSE_BY_ID[questTargetId(p)];return {x:t.spot[0],z:t.spot[1]}}
-      case 4:{const b=World.places.find(q=>q.id==='sekolah');return {x:b.x,z:b.z}}
+      case 4:{const b=World.places.find(q=>q.proyek);return {x:b.x,z:b.z}}
       case 5:return {x:h.spot[0],z:h.spot[1]};
     }
   },
@@ -31,7 +31,7 @@ const Quest={
     if(this.step===0&&P.z<ARCH_Z-3)this.advance(1,'Selamat datang di Kota Neo! Temui penjaga gerbang.');
     if(this.step===2){const c=COMPLEXES.find(c=>c.id===h.c),r=c.rect;if(P.x>r.x0+1&&P.x<r.x1&&P.z>r.z0&&P.z<r.z1)this.advance(3,'Kamu masuk '+c.name+'!')}
     if(this.step===5&&Math.hypot(P.x-h.spot[0],P.z-h.spot[1])<4){this.finish();UI.toast('Episode 1 selesai! Selamat datang di rumah 🏠',4200);
-      setTimeout(()=>{if(!UI.modalOpen)UI.card('Episode 1 selesai! 🎉',`<p>Kamu sudah mengenal Kota Neo: gerbang, komplek, rumah, dan lahan kosong untuk sekolah, taman bermain, bioskop, pasar malam, taman hiburan, dan mall.</p><p>Kota ini masih menunggu warganya. Sampai jumpa di episode berikutnya!</p>`)},3000)}
+      setTimeout(()=>{if(!UI.modalOpen)UI.card('Episode 1 selesai! 🎉',`<p>Kamu sudah mengenal Kota Neo: gerbang, komplek, rumah, sekolah, dan lahan kosong untuk taman bermain, bioskop, pasar malam, taman hiburan, dan mall.</p><p>Kota ini masih menunggu warganya. Sampai jumpa di episode berikutnya!</p>`)},3000)}
   }
 };
 
