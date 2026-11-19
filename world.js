@@ -1,11 +1,11 @@
 'use strict';
 /* world.js — membangun seluruh Kota Neo secara prosedural (low-poly cartoon) + interaksi dunia */
 const World={
-  places:[],own:null,clouds:[],lamps:[],stats:{},seats:[],lotProps:[],
+  places:[],own:null,clouds:[],lamps:[],stats:{},seats:[],lotProps:[],roofs:[],
   build(){
     const G=R.batch('ground',{cast:0,recv:1,ao:0}),S=R.batch('solid',{cast:1,recv:1,ao:1}),SG=R.batch('signs',{cast:0,recv:1,ao:0,tex:1}),
       LB=R.batch('lamp',{cast:0,recv:0,ao:0,night:1,gmix:1}),PL=R.batch('pools',{cast:0,recv:0,ao:0},false),ST=R.batch('stars',{cast:0,recv:0,ao:0},false);
-    const P_=this.places=[];this.lamps=[];this.seats=[];this.lotProps=[];
+    const P_=this.places=[];this.lamps=[];this.seats=[];this.lotProps=[];this.roofs=[];
     const INK=PAL.ink,CREAM=PAL.cream;
 
     /* ---------- helper primitif ---------- */
@@ -234,6 +234,97 @@ const World={
     });
 
     /* =========================================================
+       SEKOLAH NEO — 1 kelas, lapangan di depan, kantin di belakang,
+       tembok keliling + satu gerbang utama (tidak ada jalan masuk lain)
+       ========================================================= */
+    {
+      const Sc=SCHOOL,gz=Sc.gz,WALL='#fff3d6',BAND='#3a6ea5',ROOF='#c0583e',WL='#c9955c',WD='#8a5a34',T=.28,H=3.3;
+      const gb=new Batch({cast:0,recv:0,ao:0,night:1,gmix:1,k:1});R.houseB.push(gb);   // kaca jendela: menyala saat malam
+      // ---- tembok keliling + gerbang utama di sisi timur (menghadap jalan utama) ----
+      wall(Sc.x0,Sc.z0,Sc.x1,Sc.z0);wall(Sc.x0,Sc.z1,Sc.x1,Sc.z1);wall(Sc.x0,Sc.z0,Sc.x0,Sc.z1);
+      wall(Sc.x1,Sc.z0,Sc.x1,gz-3.6);wall(Sc.x1,gz+3.6,Sc.x1,Sc.z1);
+      {const uv=board('sch_gate',640,170,'SEKOLAH NEO','Kelas 1 · Lapangan · Kantin',{size:92});
+       for(const sd of [-1,1]){const z=gz+sd*3.4;box(S,CREAM,Sc.x1,2.15,z,1.3,4.3,1.3);box(S,INK,Sc.x1,.25,z,1.45,.5,1.45);box(S,PAL.yellow,Sc.x1,3.3,z,1.38,.26,1.38);ball(S,PAL.yellow,Sc.x1,4.6,z,.5,.5,.5);solid(Sc.x1-.7,z-.7,Sc.x1+.7,z+.7,4.4)}
+       box(S,BAND,Sc.x1,4.35,gz,1.3,1.0,8.6);box(S,INK,Sc.x1,4.9,gz,1.4,.12,8.8);box(S,INK,Sc.x1,3.82,gz,1.4,.12,8.8);
+       sign(uv,Sc.x1+.67,4.35,gz,6.4,1.7,'+x');sign(uv,Sc.x1-.67,4.35,gz,6.4,1.7,'-x');
+       for(const sd of [-1,1]){cyl(S,'#d9773f',Sc.x1+1.4,0,gz+sd*4.6,.5,.7,10,.85);ball(S,PAL.leaf[2],Sc.x1+1.4,1.1,gz+sd*4.6,.7,.55,.7);sol2(Sc.x1+1.4,gz+sd*4.6,1,1,.8,{cam:false})}
+       slab(G,PAL.walk,Sc.x1-.3,gz-3,-9.8,gz+3,0,.05);
+       P_.push({kind:'board',id:'sch_gate',x:-10.8,z:gz,r:4.2,label:'Baca papan nama',title:'SEKOLAH NEO',text:'Sekolah Neo: SD, SMP, dan SMA satu atap. Tahap 1 sudah dibuka: satu kelas, lapangan, dan kantin. Tahap berikutnya dibangun bertahap sesuai dana dari share.',noQuest:true})}
+
+      // ---- lapangan basket di depan sekolah ----
+      const fx0=-36.9,fx1=-16.5,fz0=-45,fz1=-13,ln=(x0,z0,x1,z1)=>slab(G,'#f4f1ea',x0,z0,x1,z1,.07,.085);
+      slab(G,'#d9ccb2',fx0,fz0,fx1,fz1,0,.05);slab(G,'#5c9d79',-34.5,-43,-19.5,-15,.05,.07);
+      ln(-34.5,-43,-19.5,-42.88);ln(-34.5,-15.12,-19.5,-15);ln(-34.5,-43,-34.38,-15);ln(-19.62,-43,-19.5,-15);
+      ln(-29.5,-43,-29.38,-39);ln(-24.62,-43,-24.5,-39);ln(-29.5,-39.12,-24.5,-39);
+      ln(-29.5,-19,-29.38,-15);ln(-24.62,-19,-24.5,-15);ln(-29.5,-19.12,-24.5,-19);
+      cyl(G,'#f4f1ea',-27,.07,-29,1.95,.015,24,1);cyl(G,'#5c9d79',-27,.085,-29,1.8,.015,24,1);slab(G,'#f4f1ea',-34.5,-29.06,-19.5,-28.94,.1,.115);
+      for(const [hz,dz] of [[-43.7,1],[-14.3,-1]]){
+        cyl(S,PAL.metal,-27,0,hz,.09,3.1,8,1);box(S,INK,-27,3.25,hz+dz*.1,1.9,1.15,.05);box(S,'#fff8e6',-27,3.25,hz+dz*.14,1.8,1.05,.06);
+        cyl(S,'#ff7a2f',-27,2.85,hz+dz*.62,.24,.04,16,1);sol2(-27,hz,.4,.4,3.1,{cam:false})}
+      cyl(S,PAL.metal,-37,0,-17,.08,7,8,1);box(S,'#e3342f',-37,6.65,-17.85,.05,.5,1.5);box(S,'#fff8e6',-37,6.15,-17.85,.05,.5,1.5);sol2(-37,-17,.3,.3,7,{cam:false}); // tiang bendera
+      bench(-16.9,-39,-Math.PI/2);bench(-16.9,-19,-Math.PI/2);bin(-16.6,-12.4);bin(-38.4,-35.4);
+      for(const [x,z,k] of [[-17,-47.5,1],[-40.5,-47.5,2],[-57,-47.5,3],[-17,-10.6,4],[-40.5,-10.6,5],[-57,-10.6,6],[-60.2,-41,7]])tree(x,z,.95+rnd(k)*.3,'round',k+300);
+      for(const z of [-35.6,-22.4]){bush(-38.3,z,1.1,z);bush(-38.9,z+(z<-30?-.8:.8),.9,z+1)}
+
+      // ---- gedung kelas 1 (bisa dimasuki) ----
+      const bx0=-46.8,bx1=-39.6,bz0=-33.8,bz1=-24.2,rc=-42.5,ry=x=>3.4+2.5*(1-Math.abs(x-rc)/5.3);
+      slab(G,'#e9e0c9',bx0,bz0,bx1,bz1,0,.1);for(let z=bz0+1.2;z<bz1;z+=2.4)slab(G,'#dccfb0',bx0,z,bx1,z+.06,.1,.105);
+      const wallO=(axis,c,a0,a1,ops,col)=>{
+        const seg=(s,e,y0,y1)=>{if(e-s<.01||y1-y0<.01)return;axis==='x'?slab(S,col,s,c-T/2,e,c+T/2,y0,y1):slab(S,col,c-T/2,s,c+T/2,e,y0,y1)};
+        const sorted=ops.slice().sort((p,q)=>p.a-q.a);let cur=a0;
+        for(const o of sorted){seg(cur,o.a,0,H);seg(o.a,o.b,0,o.y0);seg(o.a,o.b,o.y1,H);cur=o.b}seg(cur,a1,0,H);
+        for(const o of sorted)if(o.glass){const mid=(o.a+o.b)/2,w2=o.b-o.a,h=o.y1-o.y0,cy=(o.y0+o.y1)/2;
+          if(axis==='x'){box(gb,PAL.glass,mid,cy,c,w2,h,.06);box(S,INK,mid,cy,c,.06,h,.1);box(S,INK,mid,cy,c,w2,.06,.1);box(S,INK,mid,o.y1+.05,c,w2+.14,.1,.36);box(S,'#fff8e6',mid,o.y0-.05,c,w2+.24,.1,.42)}
+          else{box(gb,PAL.glass,c,cy,mid,.06,h,w2);box(S,INK,c,cy,mid,.1,h,.06);box(S,INK,c,cy,mid,.1,.06,w2);box(S,INK,c,o.y1+.05,mid,.36,.1,w2+.14);box(S,'#fff8e6',c,o.y0-.05,mid,.42,.1,w2+.24)}}
+        const sc=(s,e)=>{if(e-s<.02)return;axis==='x'?solid(s,c-T/2-.05,e,c+T/2+.05,H):solid(c-T/2-.05,s,c+T/2+.05,e,H)};
+        let c0=a0;for(const o of sorted){if(o.y0===0&&!o.glass){sc(c0,o.a);c0=o.b}}sc(c0,a1)};
+      const winX=[{a:-45.95,b:-44.65,y0:1,y1:2.3,glass:1},{a:-43.85,b:-42.55,y0:1,y1:2.3,glass:1},{a:-41.75,b:-40.45,y0:1,y1:2.3,glass:1}];
+      wallO('z',bx1,bz0,bz1,[{a:gz-.9,b:gz+.9,y0:0,y1:2.4},{a:-32.9,b:-31.3,y0:1,y1:2.3,glass:1},{a:-26.9,b:-25.3,y0:1,y1:2.3,glass:1}],WALL);
+      wallO('x',bz0,bx0,bx1,winX,WALL);wallO('x',bz1,bx0,bx1,winX,WALL);wallO('z',bx0,bz0,bz1,[],WALL);
+      box(S,BAND,bx1+.17,.28,bz0+2.5,.06,.56,5.0);box(S,BAND,bx1+.17,.28,bz1-2.5,.06,.56,5.0);   // lis biru bawah (depan)
+      box(S,INK,bx1,2.45,gz,.36,.1,2.0);box(S,INK,bx1,1.2,gz-.95,.3,2.4,.08);box(S,INK,bx1,1.2,gz+.95,.3,2.4,.08);   // kusen pintu (pintu terbuka)
+      for(const zz of [bz0,bz1]){const A=[bx0,H,zz],B=[bx1,H,zz],C=[bx1,ry(bx1),zz],D=[rc,5.9,zz],E=[bx0,ry(bx0),zz];S.tri(A,B,C,WALL);S.tri(A,C,D,WALL);S.tri(A,D,E,WALL)}
+      {const uv=board('sch_k1',256,80,'KELAS 1',null,{size:50});sign(uv,bx1+.2,2.85,gz,1.7,.54,'+x')}
+      // teras depan + tiang
+      slab(G,'#d9ccb2',bx1,bz0,-37.4,bz1,0,.1);slab(G,'#cdbfa3',-37.4,bz0+1,-36.9,bz1-1,0,.06);
+      for(const z of [bz0+.3,gz-2.4,gz+2.4,bz1-.3]){cyl(S,CREAM,-37.7,.1,z,.14,3.2,8,1);sol2(-37.7,z,.34,.34,3.3,{cam:false})}
+      // atap (digambar dinamis: menghilang saat pemain di dalam kelas agar interior terlihat)
+      this.roofs.push({rect:{x0:bx0-.2,x1:bx1+.2,z0:bz0-.2,z1:bz1+.2},parts:[
+        {mesh:GEO.gable,col:ROOF,M:M4.trs([rc,3.4,gz],[0,Math.PI/2,0],[10.8,2.5,10.6])},
+        {mesh:GEO.box,col:'#fff8e6',M:M4.trs([rc,3.35,gz],[0,0,0],[10.6,.14,10.8])}]});
+      // papan tulis (hijau + kapur) di dinding belakang kelas
+      {const uvB=Atlas.add('papan_tulis',640,240,(c,w2,h)=>{c.fillStyle='#2f5d46';c.fillRect(0,0,w2,h);c.fillStyle='rgba(255,255,255,.07)';c.fillRect(18,18,w2-36,h-36);
+          c.fillStyle='#f4f1ea';c.textAlign='center';c.textBaseline='middle';c.font=FD(58);c.fillText('Selamat datang!',w2/2,62);c.font=FB(40);c.fillText('Sekolah Neo — Kelas 1',w2/2,122);
+          c.font=FD(46);c.fillText('1 + 1 = 2',w2*.26,192);c.fillText('A B C',w2*.74,192);c.strokeStyle='#f4f1ea';c.lineWidth=5;c.beginPath();c.moveTo(w2*.46,178);c.quadraticCurveTo(w2*.5,150,w2*.54,178);c.stroke()});
+       box(S,WD,bx0+.2,1.95,gz,.12,1.6,5.7);sign(uvB,bx0+.27,1.95,gz,5.4,1.36,'+x');box(S,WL,bx0+.3,1.1,gz,.2,.06,5.4);
+       P_.push({kind:'board',id:'papan_tulis',x:-44.3,z:gz,r:3.3,label:'Baca papan tulis',title:'Papan Tulis',text:'Selamat datang di Sekolah Neo, Kelas 1! Duduklah di bangku mana saja. Kelas SD, SMP, dan SMA lainnya akan dibangun bertahap sesuai dana dari share.',noQuest:true})}
+      // meja & kursi
+      const chair=(x,z,yaw,col)=>{const F=Fr(S,x,z,yaw);F.box(col,0,.46,0,.44,.05,.44);F.box(col,0,.74,-.2,.44,.46,.05);
+        for(const a of [-.18,.18])for(const b2 of [-.18,.18])F.box(PAL.metal,a,.22,b2,.04,.44,.04);F.solid(-.22,-.22,.22,.22,.5,{cam:false});this.seats.push({x,z,yaw})};
+      const desk=(x,z)=>{box(S,WL,x,.74,z,.5,.05,1.1);for(const a of [-.2,.2])for(const b2 of [-.5,.5])box(S,WD,x+a,.37,z+b2,.04,.72,.04);sol2(x,z,.56,1.16,.78,{cam:false})};
+      box(S,WD,-45.4,.76,gz,.7,.06,1.7);box(S,WD,-45.4,.38,gz-.78,.64,.74,.06);box(S,WD,-45.4,.38,gz+.78,.64,.74,.06);sol2(-45.4,gz,.7,1.8,.8,{cam:false});
+      chair(-46.22,gz,Math.PI/2,'#e3342f');                                           // kursi guru (menghadap murid)
+      for(const dx of [-43.4,-42.1,-40.8])for(const zz of [-32.8,-31.6,-30.4,-27.6,-26.4,-25.2]){desk(dx,zz);chair(dx+.58,zz,-Math.PI/2,'#3a6ea5')}   // 18 meja + kursi murid
+      box(S,'#fff8e6',bx0+.3,2.7,bz0+.4,.05,.5,.5);                                       // jam dinding (kotak)
+      // ---- kantin sederhana di belakang sekolah ----
+      const kx0=-61,kx1=-49.8,kz0=-37.8,kz1=-21.8;
+      slab(G,'#d9ccb2',kx0,kz0,kx1,kz1,0,.06);
+      box(S,'#ffe9a0',(kx0+kx1)/2,1.55,-37.45,kx1-kx0,3.1,.24);solid(kx0,-37.6,kx1,-37.3,3.1);
+      box(S,WD,-55.4,.5,-35.2,8.6,1.0,.9);box(S,WL,-55.4,1.04,-35.2,8.9,.08,1.1);solid(-59.8,-35.65,-51,-34.75,1.1,{cam:false});
+      for(let i=0;i<7;i++)box(S,['#e3342f','#ffd23f','#3ea85a','#6cc3f5','#ff8a5c','#c79bf2','#fff8e6'][i],-59.2+i*1.15,1.24,-35.1,.5,.32,.3);
+      box(S,'#cfe8f3',-60.2,1.0,-36.4,.9,2.0,.7);sol2(-60.2,-36.4,.9,.7,2,{cam:false});box(S,WD,-55.4,1.95,-37.15,6,.08,.3);
+      for(let i=0;i<6;i++)box(S,['#ffd23f','#e3342f','#3ea85a','#fff8e6','#6cc3f5','#ff8a5c'][i],-57.6+i*.9,2.15,-37.15,.4,.3,.22);
+      {const uv=board('sch_kantin',384,120,'KANTIN',null,{size:84});sign(uv,-55.4,2.62,-37.3,3.0,.94,'+z')}
+      P_.push({kind:'board',id:'kantin_menu',x:-55.4,z:-33.7,r:3.2,label:'Baca menu kantin',title:'Menu Kantin',text:'Nasi goreng · Mie ayam · Es teh · Gorengan. Belum bisa dibeli: sistem uang dan pekerjaan hadir di episode berikutnya.',noQuest:true});
+      for(const [x,z] of [[-60.6,-22.3],[-55.4,-22.3],[-50.2,-22.3],[-60.6,-29.5],[-50.2,-29.5]]){cyl(S,CREAM,x,0,z,.13,3.15,8,1);sol2(x,z,.3,.3,3.2,{cam:false})}
+      const longTable=(x,z)=>{box(S,WL,x,.76,z,3.4,.06,.85);for(const a of [-1.55,1.55])for(const b2 of [-.34,.34])box(S,WD,x+a,.37,z+b2,.08,.74,.08);sol2(x,z,3.5,.9,.8,{cam:false});
+        let i=0;for(const sx of [-1.1,0,1.1])for(const sd of [-1,1])chair(x+sx,z+sd*.78,sd<0?0:Math.PI,['#e8892b','#3ea85a','#e3342f','#6cc3f5'][(i++)%4])};
+      longTable(-57.3,-31.4);longTable(-53.4,-31.4);longTable(-57.3,-27.6);longTable(-53.4,-27.6);
+      this.roofs.push({rect:{x0:kx0,x1:kx1,z0:kz0,z1:kz1},parts:[{mesh:GEO.box,col:BAND,M:M4.trs([-55.4,3.25,-29.8],[0,0,0],[12.4,.25,16.8])},{mesh:GEO.box,col:'#fff8e6',M:M4.trs([-55.4,3.08,-29.8],[0,0,0],[12.6,.1,17])}]});
+      bin(-49.2,-23.2);bin(-61.5,-24);
+    }
+
+    /* =========================================================
        KOMPLEK PERUMAHAN A–C
        ========================================================= */
     const plateUV=id=>Atlas.add('no_'+id,192,96,(c,w,h)=>{c.fillStyle=CREAM;c.fillRect(0,0,w,h);c.lineWidth=8;c.strokeStyle=INK;rr(c,4,4,w-8,h-8,16);c.stroke();c.fillStyle=INK;c.font=FD(66);c.textAlign='center';c.textBaseline='middle';c.fillText(id,w/2,h/2+4)});
@@ -327,6 +418,7 @@ const World={
     for(const r of ROADS)nogo.push({x0:r.x0-(r.id==='ave'?6.5:5),x1:r.x1+(r.id==='ave'?6.5:5),z0:r.z0-5,z1:Math.min(r.z1,r.end!==undefined?r.end:r.z1)+5});
     for(const c of COMPLEXES)nogo.push({x0:c.rect.x0-3,x1:c.rect.x1+3,z0:c.rect.z0-3,z1:c.rect.z1+3});
     for(const l of LOTS)nogo.push({x0:l.x0-7,x1:l.x1+7,z0:l.z0-7,z1:l.z1+7});
+    nogo.push({x0:SCHOOL.x0-4,x1:SCHOOL.x1+9,z0:SCHOOL.z0-4,z1:SCHOOL.z1+4});
     nogo.push({x0:-22,x1:26,z0:66,z1:102});
     const placed=[];let tries=0,n=0;
     while(n<150&&tries++<4000){const x=BOUNDS.x0+4+rnd(tries*3.1)*(BOUNDS.x1-BOUNDS.x0-8),z=BOUNDS.z0+4+rnd(tries*5.3+1)*(BOUNDS.z1-BOUNDS.z0-10);
@@ -370,6 +462,8 @@ const World={
       if(!this._tag)this._tag=nameTex('RUMAHMU','#ffd23f','#2b1a0e');
       R.push(GEO.plane,[1,1,1],M4.mul(M4.T(x,y+3.2,z),M4.mul(M4.Ry(Cam.yaw),M4.S(this._tag.w*2.2,this._tag.h*2.2,1))),{tex:this._tag.tex,cast:false,recv:false,emis:1,nofog:1});
     }
+    // atap sekolah & kantin: hilang saat pemain berada di bawahnya (interior terlihat)
+    for(const g of this.roofs){const r=g.rect;if(P.x>r.x0&&P.x<r.x1&&P.z>r.z0&&P.z<r.z1)continue;for(const q of g.parts)R.push(q.mesh,q.col,q.M)}
     // matahari / bulan
     const v=env.visDir,e=Cam.eye;
     R.push(GEO.ico(1),env.moon?'#eef2ff':'#fff2a8',M4.trs([e[0]+v[0]*360,e[1]+v[1]*360,e[2]+v[2]*360],[0,0,0],[env.moon?16:22,env.moon?16:22,env.moon?16:22]),{emis:1,cast:false,recv:false,nofog:1});
